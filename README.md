@@ -1,8 +1,8 @@
-# lethal-js
-A clean framework for creating web-proxies with just 4 lines of code
+# lithium-js
+A clean framework for creating web-proxies with just 3 files3 files3 files
 
 # Usage
 > [!IMPORTANT]  
-> You need to move the contents of `/lethal-js`  to your root folder (due to scope issues)
+> You need to move the contents of `/lithium-js`  to your root folder (due to scope issues)
 
-See `example.html`.
+See `index.html`.

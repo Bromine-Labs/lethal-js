@@ -21,7 +21,7 @@
 </div>
 
 <script>
-  import { newTab, switchTab, closeTab } from "/lithium-js/lithium.mjs"
+  import { newTab, switchTab, closeTab } from "/lithium.mjs"
   let tabs = []
   const tabsDiv = document.getElementById("tabs")
 
@@ -165,74 +165,23 @@
   checkState()
 </script>
 <script>
-  // --- LETHAL IMPORTS ---
+  // --- LITHIUM IMPORTS ---
   import {
     setTransport,
     setWisp,
     setProxy,
     makeURL,
     getProxied,
-    newTab,
-    switchTab,
-    closeTab,
-    setFrames,
-    currentTab,
-    addressInput,
     currentFrame,
     Tab
-  } from "./lethal.ts"
+  } from "/lithium.mjs"
 
-  // --- INIT ---
-  const form = document.getElementById("form")
-  let search =
-    localStorage.getItem("search-engine") ||
-    "https://search.brave.com/search?q=%s"
+  setWisp("wss://anura.pro/")
+  setProxy("scram")
 
+  setTransport("epoxy")
 
-  let backend = localStorage.getItem("proxy-backend") || "uv"
-  let wisp = localStorage.getItem("wisp-server") || "wss://anura.pro/"
-  let transport = localStorage.getItem("proxy-transport")
-
-  setWisp(wisp)
-  setProxy(backend)
-
-  if (transport) setTransport(transport)
-  else if (navigator.userAgent.indexOf("Firefox") > 0) setTransport("libcurl")
-  else setTransport("epoxy")
-
-  // --- EVENTS ---
-  form.addEventListener("submit", async (event) => {
-    event.preventDefault()
-
-    const urlToLoad = makeURL(addressInput.value, search)
-    const proxiedUrl = await getProxied(urlToLoad)
-
-    if (localStorage.getItem("stealth-mode")) {
-      currentFrame.contentWindow.location.replace(proxiedUrl)
-    } else {
-      currentFrame.src = proxiedUrl
-    }
-    addressInput.value = urlToLoad
-  })
-
-  window.addEventListener("search-engine-changed", () => {
-    search = localStorage.getItem("search-engine")
-  })
-
-  window.addEventListener("proxy-backend-changed", () => {
-    backend = localStorage.getItem("proxy-backend")
-    setProxy(localStorage.getItem("proxy-backend"))
-  })
-
-  window.addEventListener("wisp-server-changed", () => {
-    wisp = localStorage.getItem("wisp-server")
-    setWisp(localStorage.getItem("wisp-server"))
-  })
-
-  window.addEventListener("proxy-transport-changed", () => {
-    transport = localStorage.getItem("proxy-transport")
-    setTransport(localStorage.getItem("proxy-transport"))
-  })
+  currentFrame.src = await getProxied(makeURL("lithium js"))
 
   setFrames(document.getElementById("frames"));
   window.Tab = Tab;
