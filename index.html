@@ -4,19 +4,239 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Lethal JS Example</title>
+    <link type="stylesheet" href="https://app.unpkg.com/tailwindcss@2.0.1/files/dist/tailwind.min.css"/>
 </head>
 <body>
-    <iframe id="frame" style="height: 100vh; width: 100vw;"></iframe>
+<section id="frames"></section>
+<div class="flex items-center bg-surface border-b border-overlay">
+  <div id="tabs" class="flex-1 flex overflow-x-auto scrollbar-hide"></div>
+  <button
+    id="new-tab-btn"
+    class="mr-2 p-2 text-text hover:bg-overlay rounded-md"
+    aria-label="New Tab"
+    title="New Tab"
+  >
+    <Icon name="ph:plus-bold" class="size-5" />
+  </button>
+</div>
 
-    <script type="module">
-        import { setTransport, setWisp, makeURL, getProxied } from './lethal.mjs'
-        const frame = document.getElementById('frame');
-        
-        setTransport('epoxy');
-        setWisp('wss://wisp.mercurywork.shop/wisp/');
+<script>
+  import { newTab, switchTab, closeTab } from "@/utils/lethal.ts"
+  let tabs = []
+  const tabsDiv = document.getElementById("tabs")
 
-        frame.src = await getProxied(makeURL('Hello World!'));
+  function createTab(id, title = "New Tab", url = "") {
+    const tab = document.createElement("div")
+    tab.className =
+      "flex items-center min-w-0 max-w-xs px-4 py-2 border-r border-overlay hover:bg-overlay cursor-pointer"
+    tab.dataset.tabId = id
 
-    </script>
+    const favicon = document.createElement("img")
+    favicon.className = "mr-2 size-4"
+    favicon.alt = "Favicon"
+    favicon.src = getIcon(url)
+
+    const titleSpan = document.createElement("span")
+    titleSpan.className = "tab truncate flex-1"
+    titleSpan.textContent = title
+
+    const close = document.createElement("button")
+    close.className = "ml-2 text-text/50 hover:text-text"
+    close.innerHTML = "&times;"
+    close.onclick = async (e) => {
+      e.stopPropagation()
+      if (closeTab) {
+        closeTab(id)
+      }
+    }
+
+    tab.appendChild(favicon)
+    tab.appendChild(titleSpan)
+    tab.appendChild(close)
+
+    tab.onclick = () => {
+      if (switchTab) {
+        switchTab(id)
+      }
+    }
+
+    tabsDiv.appendChild(tab)
+    const tabData = { id, element: tab, title, url }
+    tabs.push(tabData)
+
+    return tabData
+  }
+
+  function getIcon(url) {
+    const regex = new RegExp("https?:\\/\\/(www\\.)?[-a-zA-Z0-9@:%._\\+~#=]{1,256}\\.[a-zA-Z0-9()]{1,6}\\b([-a-zA-Z0-9()@:%_\\+.~#?&//=]*)") 
+    if(!regex.test(url))
+      return "https://placehold.co/24"
+    return `https://t1.gstatic.com/faviconV2?client=SOCIAL&type=FAVICON&fallback_opts=TYPE,SIZE,URL&size=64&url=${url}`
+  }
+
+  function checkState() {
+    const frames = Array.from(document.querySelectorAll('iframe[id^="frame-"]'))
+    const frameIds = frames.map((frame) =>
+      parseInt(frame.id.replace("frame-", "")),
+    )
+
+    tabs = tabs.filter((tab) => {
+      if (!frameIds.includes(tab.id)) {
+        tab.element.remove()
+        return false
+      }
+      return true
+    })
+
+    frameIds.forEach((id) => {
+      if (!tabs.some((tab) => tab.id === id)) {
+        createTab(id, "New Tab", "")
+      }
+    })
+
+    const visibleFrame = frames.find(
+      (frame) => !frame.classList.contains("hidden"),
+    )
+    if (visibleFrame) {
+      const activeTabId = parseInt(visibleFrame.id.replace("frame-", ""))
+      syncUI(activeTabId)
+    }
+  }
+
+  function syncUI(activeId) {
+    document.querySelectorAll("[data-tab-id]").forEach((tab) => {
+      const isActive = parseInt(tab.dataset.tabId) === activeId
+      tab.classList.toggle("bg-overlay", isActive)
+      tab.classList.toggle("active", isActive)
+    })
+  }
+
+  function renameTab(tabId, title, url) {
+    const tabData = tabs.find((t) => t.id === tabId)
+    if (!tabData) return
+
+    tabData.title = title || "New Tab"
+    tabData.url = url || ""
+
+    tabData.element.querySelector(".tab").textContent = tabData.title
+
+    tabData.element.querySelector("img").src = getIcon(tabData.url)
+  }
+
+  // --- EVENTS ----
+  document.getElementById("new-tab-btn")?.addEventListener("click", () => {
+    if (newTab) newTab()
+  })
+
+  document.addEventListener("new-tab", (e) => {
+    const tabId = e.detail.tabNumber
+    if (!tabs.some((tab) => tab.id === tabId)) {
+      createTab(tabId, "New Tab", "")
+    }
+    checkState()
+  })
+
+  document.addEventListener("switch-tab", (e) => {
+    const tabId = e.detail.tabNumber
+    syncUI(tabId)
+  })
+
+
+  document.addEventListener("url-changed", (e) => {
+    renameTab(e.detail.tabId, e.detail.title, e.detail.url)
+  })
+    
+    
+
+
+    
+    document.addEventListener('close-tab', (e) => {
+      const tabId = e.detail.tabNumber;
+      const tabIndex = tabs.findIndex(tab => tab.id === tabId);
+      if (tabIndex !== -1) {
+        tabs[tabIndex].element.remove();
+        tabs.splice(tabIndex, 1);
+      }
+      checkState();
+    });
+    
+
+
+  checkState()
+</script>
+<script>
+  // --- LETHAL IMPORTS ---
+  import {
+    setTransport,
+    setWisp,
+    setProxy,
+    makeURL,
+    getProxied,
+    newTab,
+    switchTab,
+    closeTab,
+    setFrames,
+    currentTab,
+    addressInput,
+    currentFrame,
+    Tab
+  } from "./lethal.ts"
+
+  // --- INIT ---
+  const form = document.getElementById("form")
+  let search =
+    localStorage.getItem("search-engine") ||
+    "https://search.brave.com/search?q=%s"
+
+
+  let backend = localStorage.getItem("proxy-backend") || "uv"
+  let wisp = localStorage.getItem("wisp-server") || "wss://anura.pro/"
+  let transport = localStorage.getItem("proxy-transport")
+
+  setWisp(wisp)
+  setProxy(backend)
+
+  if (transport) setTransport(transport)
+  else if (navigator.userAgent.indexOf("Firefox") > 0) setTransport("libcurl")
+  else setTransport("epoxy")
+
+  // --- EVENTS ---
+  form.addEventListener("submit", async (event) => {
+    event.preventDefault()
+
+    const urlToLoad = makeURL(addressInput.value, search)
+    const proxiedUrl = await getProxied(urlToLoad)
+
+    if (localStorage.getItem("stealth-mode")) {
+      currentFrame.contentWindow.location.replace(proxiedUrl)
+    } else {
+      currentFrame.src = proxiedUrl
+    }
+    addressInput.value = urlToLoad
+  })
+
+  window.addEventListener("search-engine-changed", () => {
+    search = localStorage.getItem("search-engine")
+  })
+
+  window.addEventListener("proxy-backend-changed", () => {
+    backend = localStorage.getItem("proxy-backend")
+    setProxy(localStorage.getItem("proxy-backend"))
+  })
+
+  window.addEventListener("wisp-server-changed", () => {
+    wisp = localStorage.getItem("wisp-server")
+    setWisp(localStorage.getItem("wisp-server"))
+  })
+
+  window.addEventListener("proxy-transport-changed", () => {
+    transport = localStorage.getItem("proxy-transport")
+    setTransport(localStorage.getItem("proxy-transport"))
+  })
+
+  setFrames(document.getElementById("frames"));
+  window.Tab = Tab;
+  new Tab();
+</script>
 </body>
 </html>
